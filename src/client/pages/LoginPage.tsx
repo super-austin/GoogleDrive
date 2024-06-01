@@ -12,6 +12,7 @@ const LoginPage = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
+      localStorage.setItem("rootPath", "");
       navigate("/");
     }
   }, []);

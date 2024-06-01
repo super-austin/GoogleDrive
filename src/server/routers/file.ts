@@ -19,6 +19,7 @@ router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
         const newFile = new File({
           filename: file.originalname,
           path: paths[index],
+          data: file.buffer,
           contentType: file.mimetype,
           fileData: file.buffer,
           username: req.headers.authorization,
@@ -44,19 +45,26 @@ router.get("/", async (req, res) => {
   const { root } = req.query;
   const rootPath = (root as string) || "";
 
+  console.log(rootPath);
+
   const username = req.headers.authorization;
   try {
     const files = (await File.find({ username, removed_at: null })).filter(
       ({ path }) => path?.includes(rootPath)
     );
 
+    console.log(files);
+
     const result = [];
+
     files.forEach((file) => {
-      if (file.path?.split("/").length === 1) {
+      let newRoot = file.path?.slice(rootPath.length, file.path.length) || "";
+      if (newRoot[0].startsWith("/"))
+        newRoot = newRoot?.slice(1, newRoot.length);
+      if (newRoot.split("/").length === 1) {
         result.push(file);
       } else {
-        const pathChunk =
-          file.path?.slice(rootPath.length, file.path.length).split("/") || [];
+        const pathChunk = newRoot.split("/") || [];
         const name = pathChunk[0];
         if (result.findIndex((file) => file.filename === name) === -1) {
           result.push({
@@ -76,19 +84,19 @@ router.get("/", async (req, res) => {
   }
 });
 
-// router.get("/:id", async (req, res) => {
-//   try {
-//     const file = await File.findOne({ _id: req.params.id });
-//     if (!file) {
-//       return res
-//         .status(404)
-//         .json({ isSuccess: false, error: "File not found" });
-//     }
-//     return res.status(200).json(file);
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
+router.get("/:id", async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.id });
+    if (!file) {
+      return res
+        .status(404)
+        .json({ isSuccess: false, error: "File not found" });
+    }
+    return res.status(200).json(file);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+});
 
 // router.get("/download/:id", async (req, res) => {
 //   try {
@@ -114,64 +122,37 @@ router.get("/", async (req, res) => {
 //   }
 // });
 
-// router.put("/:id", async (req, res) => {
-//   try {
-//     const existingFile = await File.findOne({ _id: req.params.id });
+router.get("/image/:id", async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.id });
+    if (!file) {
+      return res
+        .status(404)
+        .json({ isSuccess: false, error: "Image not found" });
+    }
+    const imgBuffer = file.data;
+    const contentType = file.contentType;
+    res.set("Content-Type", contentType || "");
+    res.send(imgBuffer);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+});
 
-//     if (!existingFile) {
-//       return res.status(404).json({
-//         isSuccess: false,
-//         error: "File does not exist",
-//       });
-//     }
+router.get("/text/:id", async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.id });
+    if (!file) {
+      return res
+        .status(404)
+        .json({ isSuccess: false, error: "Text not found" });
+    }
 
-//     console.log(existingFile);
-
-//     const newFile = await File.findOneAndUpdate(
-//       { _id: req.params.id },
-//       { $set: { filename: req.body.filename } },
-//       { new: true }
-//     );
-
-//     console.log(newFile);
-
-//     return res.status(200).json({ file: newFile });
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
-
-// router.get("/image/:id", async (req, res) => {
-//   try {
-//     const file = await File.findOne({ _id: req.params.id });
-//     if (!file) {
-//       return res
-//         .status(404)
-//         .json({ isSuccess: false, error: "Image not found" });
-//     }
-//     const imgBuffer = file.data;
-//     const contentType = file.contentType;
-//     res.set("Content-Type", contentType || "");
-//     res.send(imgBuffer);
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
-
-// router.get("/text/:id", async (req, res) => {
-//   try {
-//     const file = await File.findOne({ _id: req.params.id });
-//     if (!file) {
-//       return res
-//         .status(404)
-//         .json({ isSuccess: false, error: "Text not found" });
-//     }
-
-//     const textData = (file.data || "").toString("utf8");
-//     res.send(textData);
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
+    const textData = (file.data || "").toString("utf8");
+    res.send(textData);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+});
 
 export { router };

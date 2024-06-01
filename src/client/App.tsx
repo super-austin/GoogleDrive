@@ -4,6 +4,7 @@ import "./App.css";
 
 import LoginPage from "./pages/LoginPage";
 import MainPage from "./pages/MainPage";
+import FileDetailPage from "./pages/FileDetailPage";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<MainPage />} />
+        <Route path="/file/:fileId" element={<FileDetailPage />} />
       </Routes>
     </BrowserRouter>
   );

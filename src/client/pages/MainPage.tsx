@@ -12,6 +12,7 @@ interface FileItem {
 const MainPage: FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [items, setItems] = useState<FileItem[]>([]);
+  const [rootPath, setRootPath] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,8 +21,14 @@ const MainPage: FC = () => {
       navigate("/login");
     }
 
+    const savedLocalStorage = localStorage.getItem("rootPath");
+    console.log(savedLocalStorage);
+    setRootPath(savedLocalStorage || "");
+  }, []);
+
+  useEffect(() => {
     axios
-      .get("/api/file", {
+      .get(`/api/file?root=${rootPath}`, {
         headers: {
           authorization: localStorage.getItem("user") || "",
         },
@@ -32,7 +39,9 @@ const MainPage: FC = () => {
       .catch((err) => {
         console.error("Error fetching file information");
       });
-  }, []);
+
+    localStorage.setItem("rootPath", rootPath);
+  }, [rootPath]);
 
   const onFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -76,8 +85,6 @@ const MainPage: FC = () => {
     }
   };
 
-  console.log(items);
-
   return (
     <div>
       <div
@@ -119,15 +126,45 @@ const MainPage: FC = () => {
             </tr>
           </thead>
           <tbody>
+            {rootPath !== "" && (
+              <tr
+                onClick={() => {
+                  const chunks = rootPath.split("/");
+                  setRootPath(chunks.slice(0, chunks.length - 1).join("/"));
+                }}
+              >
+                <td>..</td>
+                <td>..</td>
+                <td>..</td>
+                <td></td>
+              </tr>
+            )}
             {items.map((item) => (
-              <tr key={item._id}>
+              <tr
+                key={item._id}
+                onClick={() => {
+                  if (item.contentType === "directory") {
+                    const newRootPath =
+                      rootPath === ""
+                        ? item.filename
+                        : `${rootPath}/${item.filename}`;
+                    setRootPath(newRootPath);
+                  } else {
+                    navigate(`/file/${item._id}`);
+                  }
+                }}
+              >
                 <td>
                   {item.contentType === "directory" ? "directory" : "file"}
                 </td>
                 <td>{item.filename}</td>
                 <td>
                   ./
-                  {item.contentType !== "directory" ? item.path : item.filename}
+                  {item.contentType !== "directory"
+                    ? item.path
+                    : rootPath === ""
+                    ? item.filename
+                    : `${rootPath}/${item.filename}`}
                 </td>
                 <td>
                   <button>Remove</button>
