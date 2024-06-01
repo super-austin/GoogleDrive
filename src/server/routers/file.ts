@@ -9,7 +9,7 @@ const router = Router();
 router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
   if (!req.files) return res.status(400).send("No files uploaded.");
 
-  console.log("b");
+  console.log("c");
 
   try {
     const files = req.files as Express.Multer.File[];
