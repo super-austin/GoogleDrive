@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { MONGO_URI } from "./constant";
 
 import { router as UserRouter } from "./routers/user";
+import { router as FileRouter } from "./routers/file";
 
 const app = express();
 app.use(bodyParser.json());
@@ -22,6 +23,7 @@ app.get("/api/health", (_, res) => {
   res.send("Hello Vite + React + TypeScript!");
 });
 app.use("/api/user", UserRouter);
+app.use("/api/file", FileRouter);
 
 ViteExpress.listen(app, 3000, () =>
   console.log("Server is listening on port 3000...")

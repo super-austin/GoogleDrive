@@ -40,3 +40,15 @@
 .read-the-docs {
   color: #888;
 }
+
+table {
+  border-collapse: collapse;
+}
+
+td {
+  border: 1px solid black;
+}
+
+tbody > tr {
+  cursor: pointer;
+}
