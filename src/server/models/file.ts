@@ -8,7 +8,7 @@ const File = mongoose.model(
     data: Buffer,
     contentType: String,
     username: String,
-    removed_at: Date,
+    removedAt: Number,
   })
 );
 

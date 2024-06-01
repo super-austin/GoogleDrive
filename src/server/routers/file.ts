@@ -9,6 +9,8 @@ const router = Router();
 router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
   if (!req.files) return res.status(400).send("No files uploaded.");
 
+  console.log("b");
+
   try {
     const files = req.files as Express.Multer.File[];
     const paths = JSON.parse(req.body.paths as string); // Retrieve paths from formData
@@ -23,9 +25,9 @@ router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
           contentType: file.mimetype,
           fileData: file.buffer,
           username: req.headers.authorization,
+          removedAt: 0,
         });
 
-        console.log(newFile);
         await newFile.save();
       })
     );
@@ -34,9 +36,9 @@ router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
       .status(200)
       .json({ isSuccess: true, message: "Files uploaded and saved." });
   } catch (error) {
-    res.status(500).send({
+    return res.status(500).json({
       isSuccess: false,
-      message: error.message,
+      error,
     });
   }
 });
@@ -45,15 +47,11 @@ router.get("/", async (req, res) => {
   const { root } = req.query;
   const rootPath = (root as string) || "";
 
-  console.log(rootPath);
-
   const username = req.headers.authorization;
   try {
-    const files = (await File.find({ username, removed_at: null })).filter(
+    const files = (await File.find({ username, removedAt: 0 })).filter(
       ({ path }) => path?.includes(rootPath)
     );
-
-    console.log(files);
 
     const result = [];
 
@@ -78,9 +76,12 @@ router.get("/", async (req, res) => {
       }
     });
 
-    return res.status(200).json({ files: result });
+    return res.status(200).json({ isSuccess: true, files: result });
   } catch (err) {
-    return res.status(500).json(err);
+    return res.status(500).json({
+      isSuccess: false,
+      error,
+    });
   }
 });
 
@@ -94,7 +95,10 @@ router.get("/:id", async (req, res) => {
     }
     return res.status(200).json(file);
   } catch (err) {
-    return res.status(500).json(err);
+    return res.status(500).json({
+      isSuccess: false,
+      error,
+    });
   }
 });
 
@@ -113,14 +117,42 @@ router.get("/:id", async (req, res) => {
 //   }
 // });
 
-// router.delete("/:id", async (req, res) => {
-//   try {
-//     await File.findOneAndDelete({ _id: req.params.id });
-//     return res.status(200).json({ isSuccess: true });
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
+router.delete("/", async (req, res) => {
+  const { keyword } = req.query;
+  const username = req.headers.authorization;
+
+  console.log(keyword, username);
+
+  try {
+    const tfiles = await File.find({ username, removedAt: 0 });
+    const files = tfiles.filter(({ path }) => {
+      return path?.includes((keyword as string) || "");
+    });
+
+    await Promise.all(
+      files.map(async (file, index) => {
+        console.log(file);
+        await File.findOneAndUpdate(
+          { _id: file._id },
+          {
+            $set: {
+              ...file.toObject(),
+              removedAt: Date.now(),
+            },
+          },
+          { new: true }
+        );
+      })
+    );
+
+    return res.status(200).json({ isSuccess: true });
+  } catch (err) {
+    return res.status(500).json({
+      isSuccess: false,
+      error: err,
+    });
+  }
+});
 
 router.get("/image/:id", async (req, res) => {
   try {

@@ -22,11 +22,17 @@ const MainPage: FC = () => {
     }
 
     const savedLocalStorage = localStorage.getItem("rootPath");
-    console.log(savedLocalStorage);
     setRootPath(savedLocalStorage || "");
   }, []);
 
   useEffect(() => {
+    fetchData();
+
+    console.log(rootPath);
+    localStorage.setItem("rootPath", rootPath);
+  }, [rootPath]);
+
+  const fetchData = async () => {
     axios
       .get(`/api/file?root=${rootPath}`, {
         headers: {
@@ -39,9 +45,7 @@ const MainPage: FC = () => {
       .catch((err) => {
         console.error("Error fetching file information");
       });
-
-    localStorage.setItem("rootPath", rootPath);
-  }, [rootPath]);
+  };
 
   const onFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -83,6 +87,19 @@ const MainPage: FC = () => {
         "Error uploading files: " + (error.response?.data || error.message)
       );
     }
+  };
+
+  const removeItem = async (item: FileItem) => {
+    const keyword =
+      rootPath === "" ? item.filename : `${rootPath}/${item.filename}`;
+    axios
+      .delete(`/api/file?keyword=${keyword}`, {
+        headers: {
+          authorization: localStorage.getItem("user") || "",
+        },
+      })
+      .then(async () => await fetchData())
+      .catch((err) => console.error(err));
   };
 
   return (
@@ -167,7 +184,14 @@ const MainPage: FC = () => {
                     : `${rootPath}/${item.filename}`}
                 </td>
                 <td>
-                  <button>Remove</button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeItem(item);
+                    }}
+                  >
+                    Remove
+                  </button>
                 </td>
               </tr>
             ))}
