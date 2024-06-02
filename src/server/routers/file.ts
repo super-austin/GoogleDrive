@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import File from "../models/file";
+import { scheduleJob } from "node-schedule";
 
 const storage = multer.memoryStorage();
 
@@ -152,8 +153,6 @@ router.delete("/", async (req, res) => {
   const { keyword } = req.query;
   const username = req.headers.authorization;
 
-  console.log(keyword, username);
-
   try {
     const files = (await File.find({ username, removedAt: 0 })).filter(
       ({ path }) => {
@@ -163,7 +162,6 @@ router.delete("/", async (req, res) => {
 
     await Promise.all(
       files.map(async (file, index) => {
-        console.log(file);
         await File.findOneAndUpdate(
           { _id: file._id },
           {
@@ -176,6 +174,20 @@ router.delete("/", async (req, res) => {
         );
       })
     );
+
+    const currentDate = Date.now();
+    const scheduledTime = currentDate + 5 * 60 * 1000;
+    const cronjob = scheduleJob(scheduledTime, async () => {
+      try {
+        await Promise.all(
+          files.map(async (file, index) => {
+            await File.findOneAndDelete({ _id: file._id });
+          })
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    });
 
     return res.status(200).json({ isSuccess: true });
   } catch (err) {
@@ -203,7 +215,6 @@ router.put("/restore", async (req, res) => {
 
     await Promise.all(
       files.map(async (file, index) => {
-        console.log(file);
         await File.findOneAndUpdate(
           { _id: file._id },
           {
@@ -237,15 +248,11 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    console.log(existingFile);
-
     const newFile = await File.findOneAndUpdate(
       { _id: req.params.id },
       { $set: { filename: req.body.filename } },
       { new: true }
     );
-
-    console.log(newFile);
 
     return res.status(200).json({ file: newFile });
   } catch (err) {
