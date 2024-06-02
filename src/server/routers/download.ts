@@ -8,11 +8,9 @@ router.get("/health", (req, res) => {
   return res.send("API is working");
 });
 
-router.get("/download", async (req, res) => {
+router.get("/compress", async (req, res) => {
   const { keyword } = req.query;
   const username = req.headers.authorization;
-
-  console.log(keyword, username);
 
   try {
     const files = (await File.find({ username, removedAt: 0 })).filter(
@@ -33,7 +31,54 @@ router.get("/download", async (req, res) => {
       folderName = chunks.slice(0, chunks.length - 1).join("/");
     }
 
-    console.log(folderName);
+    const zip = new JSZip();
+    const folder = zip.folder(folderName);
+
+    files.forEach((file) => {
+      const fileData = Buffer.from(file.data || "");
+      folder!.file((file.path || "").slice(folderName.length + 1), fileData);
+    });
+
+    zip.generateAsync({ type: "nodebuffer" }).then(async function (content) {
+      const newFile = new File({
+        filename: `${folderName}.zip`,
+        path: folderName,
+        data: content,
+        contentType: "application/zip",
+        fileData: content,
+        username: username,
+        removedAt: 0,
+      });
+
+      await newFile.save();
+    });
+  } catch (err) {
+    return res.status(500).json({ isSuccess: false, error: err });
+  }
+});
+
+router.get("/download", async (req, res) => {
+  const { keyword } = req.query;
+  const username = req.headers.authorization;
+
+  try {
+    const files = (await File.find({ username, removedAt: 0 })).filter(
+      ({ path }) => {
+        return path?.includes((keyword as string) || "");
+      }
+    );
+
+    if (!files.length) {
+      return res
+        .status(404)
+        .json({ isSuccess: false, error: "File not found" });
+    }
+
+    const chunks = ((keyword as string) || "").split("/");
+    let folderName = (keyword as string) || "";
+    if (chunks[chunks.length - 1].includes(".")) {
+      folderName = chunks.slice(0, chunks.length - 1).join("/");
+    }
 
     const zip = new JSZip();
     const folder = zip.folder(folderName);

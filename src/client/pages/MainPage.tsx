@@ -13,6 +13,8 @@ const MainPage: FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [items, setItems] = useState<FileItem[]>([]);
   const [rootPath, setRootPath] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [newName, setNewName] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -148,6 +150,24 @@ const MainPage: FC = () => {
     }
   };
 
+  const compressItem = async (item: FileItem) => {
+    const keyword =
+      rootPath === "" ? item.filename : `${rootPath}/${item.filename}`;
+
+    await axios.get(`/api/download/compress?keyword=${keyword}`, {
+      responseType: "blob",
+      headers: {
+        authorization: localStorage.getItem("user") || "",
+      },
+    });
+
+    await fetchData();
+  };
+
+  const submitRename = async (item: FileItem, newName: string) => {
+    await axios.put(`/api/file/${item._id}`, { filename: newName });
+  };
+
   return (
     <div>
       <div
@@ -220,7 +240,25 @@ const MainPage: FC = () => {
                 <td>
                   {item.contentType === "directory" ? "directory" : "file"}
                 </td>
-                <td>{item.filename}</td>
+                <td>
+                  {editingId === item._id ? (
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(newName)}
+                      onFocus={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          submitRename(item, newName);
+                          setNewName("");
+                          setEditingId("");
+                        }
+                      }}
+                    />
+                  ) : (
+                    item.filename
+                  )}
+                </td>
                 <td>
                   ./
                   {item.contentType !== "directory"
@@ -246,6 +284,25 @@ const MainPage: FC = () => {
                   >
                     Download
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      compressItem(item);
+                    }}
+                  >
+                    Compress
+                  </button>
+                  {item.contentType !== "directory" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(item._id);
+                        setNewName(item.filename);
+                      }}
+                    >
+                      Rename
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

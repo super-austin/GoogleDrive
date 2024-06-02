@@ -78,7 +78,7 @@ router.get("/", async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       isSuccess: false,
-      error,
+      err: error,
     });
   }
 });
@@ -223,6 +223,33 @@ router.put("/restore", async (req, res) => {
       isSuccess: false,
       error: err,
     });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const existingFile = await File.findOne({ _id: req.params.id });
+
+    if (!existingFile) {
+      return res.status(404).json({
+        isSuccess: false,
+        error: "File does not exist",
+      });
+    }
+
+    console.log(existingFile);
+
+    const newFile = await File.findOneAndUpdate(
+      { _id: req.params.id },
+      { $set: { filename: req.body.filename } },
+      { new: true }
+    );
+
+    console.log(newFile);
+
+    return res.status(200).json({ file: newFile });
+  } catch (err) {
+    return res.status(500).json(err);
   }
 });
 
