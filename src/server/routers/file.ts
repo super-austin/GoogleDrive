@@ -9,8 +9,6 @@ const router = Router();
 router.post("/upload", multer({ storage }).array("files"), async (req, res) => {
   if (!req.files) return res.status(400).send("No files uploaded.");
 
-  console.log("c");
-
   try {
     const files = req.files as Express.Multer.File[];
     const paths = JSON.parse(req.body.paths as string); // Retrieve paths from formData
@@ -85,6 +83,54 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/recycled", async (req, res) => {
+  const { root } = req.query;
+  const rootPath = (root as string) || "";
+
+  const username = req.headers.authorization;
+  try {
+    const files = (
+      await File.find({
+        username,
+        removedAt: {
+          $gt: Date.now() - 5 * 60 * 1000,
+        },
+      })
+    ).filter(({ path }) => path?.includes(rootPath));
+
+    const result = [];
+
+    files.forEach((file) => {
+      let newRoot = file.path?.slice(rootPath.length, file.path.length) || "";
+      if (newRoot[0].startsWith("/"))
+        newRoot = newRoot?.slice(1, newRoot.length);
+      if (newRoot.split("/").length === 1) {
+        result.push(file);
+      } else {
+        const pathChunk = newRoot.split("/") || [];
+        const name = pathChunk[0];
+        if (result.findIndex((file) => file.filename === name) === -1) {
+          result.push({
+            _id: `directory_${name}`,
+            filename: name,
+            path: rootPath,
+            contentType: "directory",
+            username: file.username,
+            removedAt: file.removedAt,
+          });
+        }
+      }
+    });
+
+    return res.status(200).json({ isSuccess: true, files: result });
+  } catch (err) {
+    return res.status(500).json({
+      isSuccess: false,
+      error,
+    });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const file = await File.findOne({ _id: req.params.id });
@@ -102,21 +148,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// router.get("/download/:id", async (req, res) => {
-//   try {
-//     const file = await File.findOne({ _id: req.params.id });
-//     if (!file) {
-//       return res
-//         .status(404)
-//         .json({ isSuccess: false, error: "File not found" });
-//     }
-//     res.set("Content-Type", file.contentType || "");
-//     return res.send(file.data);
-//   } catch (err) {
-//     return res.status(500).json(err);
-//   }
-// });
-
 router.delete("/", async (req, res) => {
   const { keyword } = req.query;
   const username = req.headers.authorization;
@@ -124,7 +155,48 @@ router.delete("/", async (req, res) => {
   console.log(keyword, username);
 
   try {
-    const tfiles = await File.find({ username, removedAt: 0 });
+    const files = (await File.find({ username, removedAt: 0 })).filter(
+      ({ path }) => {
+        return path?.includes((keyword as string) || "");
+      }
+    );
+
+    await Promise.all(
+      files.map(async (file, index) => {
+        console.log(file);
+        await File.findOneAndUpdate(
+          { _id: file._id },
+          {
+            $set: {
+              ...file.toObject(),
+              removedAt: Date.now(),
+            },
+          },
+          { new: true }
+        );
+      })
+    );
+
+    return res.status(200).json({ isSuccess: true });
+  } catch (err) {
+    return res.status(500).json({
+      isSuccess: false,
+      error: err,
+    });
+  }
+});
+
+router.put("/restore", async (req, res) => {
+  const { keyword } = req.query;
+  const username = req.headers.authorization;
+
+  try {
+    const tfiles = await File.find({
+      username,
+      removedAt: {
+        $gt: Date.now() - 5 * 60 * 1000,
+      },
+    });
     const files = tfiles.filter(({ path }) => {
       return path?.includes((keyword as string) || "");
     });
@@ -137,7 +209,7 @@ router.delete("/", async (req, res) => {
           {
             $set: {
               ...file.toObject(),
-              removedAt: Date.now(),
+              removedAt: 0,
             },
           },
           { new: true }

@@ -6,6 +6,7 @@ import { MONGO_URI } from "./constant";
 
 import { router as UserRouter } from "./routers/user";
 import { router as FileRouter } from "./routers/file";
+import { router as DownloadRouter } from "./routers/download";
 
 const app = express();
 app.use(bodyParser.json());
@@ -24,6 +25,7 @@ app.get("/api/health", (_, res) => {
 });
 app.use("/api/user", UserRouter);
 app.use("/api/file", FileRouter);
+app.use("/api/download", DownloadRouter);
 
 ViteExpress.listen(app, 3000, () =>
   console.log("Server is listening on port 3000...")

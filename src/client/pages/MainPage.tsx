@@ -102,6 +102,52 @@ const MainPage: FC = () => {
       .catch((err) => console.error(err));
   };
 
+  const downloadItem = async (item: FileItem) => {
+    const keyword =
+      rootPath === "" ? item.filename : `${rootPath}/${item.filename}`;
+
+    if (item.contentType === "directory") {
+      axios
+        .get(`/api/download/download?keyword=${keyword}`, {
+          responseType: "blob",
+          headers: {
+            authorization: localStorage.getItem("user") || "",
+          },
+        })
+        .then((response) => {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", "files.zip"); // Specify the filename to download
+          document.body.appendChild(link);
+          link.click();
+
+          // Clean up and revoke the URL object
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        })
+        .catch((error) => console.error("Download error:", error));
+    } else {
+      axios
+        .get(`/api/download/download/${item._id}`, {
+          responseType: "blob",
+        })
+        .then((response) => {
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", item.filename); //or any other extension
+          document.body.appendChild(link);
+          link.click();
+
+          // Clean up and remove the link
+          link.parentNode?.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        })
+        .catch((error) => console.error("Download error:", error));
+    }
+  };
+
   return (
     <div>
       <div
@@ -191,6 +237,14 @@ const MainPage: FC = () => {
                     }}
                   >
                     Remove
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadItem(item);
+                    }}
+                  >
+                    Download
                   </button>
                 </td>
               </tr>
