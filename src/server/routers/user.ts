@@ -2,6 +2,7 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 
 import User from "../models/user";
+import { JWT_SECRET } from "../constant";
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.post("/login", async (req, res) => {
         error: "Incorrect password",
       });
     } else {
-      jwt.sign({ email }, "secretkey", (err, token) => {
+      jwt.sign({ email }, JWT_SECRET, (err, token) => {
         if (err) {
           return res.status(500).json({
             isSuccess: false,
@@ -53,7 +54,7 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    const newUser = new User({ email, password });
+    const newUser = new User({ email });
     newUser.save();
     return res.status(200).json({ isSuccess: true, user: newUser });
   } catch (err) {

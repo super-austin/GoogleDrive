@@ -38,7 +38,7 @@ const LoginPage = () => {
     } catch (err) {
       switch (err.response.status) {
         case 404:
-          setError("Error does not exist");
+          setError("User does not exist");
           break;
         case 400:
           setError("Incorrect password");

@@ -263,10 +263,13 @@ router.put("/:id", async (req, res) => {
 router.get("/image/:id", async (req, res) => {
   try {
     const file = await File.findOne({ _id: req.params.id });
-    if (!file) {
+    if (!file || !file.contentType?.includes("image")) {
       return res
         .status(404)
-        .json({ isSuccess: false, error: "Image not found" });
+        .json({
+          isSuccess: false,
+          error: "Image not found or invalid file format",
+        });
     }
     const imgBuffer = file.data;
     const contentType = file.contentType;
@@ -280,10 +283,13 @@ router.get("/image/:id", async (req, res) => {
 router.get("/text/:id", async (req, res) => {
   try {
     const file = await File.findOne({ _id: req.params.id });
-    if (!file) {
+    if (!file || !file.contentType?.includes("text")) {
       return res
         .status(404)
-        .json({ isSuccess: false, error: "Text not found" });
+        .json({
+          isSuccess: false,
+          error: "Text not found or invalid file format",
+        });
     }
 
     const textData = (file.data || "").toString("utf8");
